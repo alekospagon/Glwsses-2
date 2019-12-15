@@ -15,6 +15,7 @@
 #define Up    2
 #define Down  3
 
+//grid max size
 #define Y 25
 #define X 80
 
@@ -37,9 +38,9 @@
 //SO FUNCTIONS DONT HAVE 42 ARGUMENTS
 static uint_fast8_t x_pos = 0, y_pos = 0; 		//position in grid
 static uint_fast8_t x_max = 0, y_max = 0;		//dont go to EMPTY space 
-												//-- grid may be larger
+							//-- grid may be larger
 												
-static uint_fast8_t dir = Right;				//Direction IP is moving 
+static uint_fast8_t dir = Right;			//Direction IP is moving 
 static uint_fast8_t string_mode = 0;			//toggles string mode
 
 
@@ -48,7 +49,7 @@ static uint_fast8_t string_mode = 0;			//toggles string mode
 signed long int stack[STACK_MAX];
 int stackSize = 0;
 
-static char ins[Y][X]; 							//instructions (the grid)
+static char ins[Y][X]; 					//instructions (the grid)
 
 
 
@@ -59,7 +60,7 @@ void 			init_grid 	(FILE * fd);
 void 			print_grid	();
 
 //weird pop
-signed long int	my_pop 		();
+signed long int		my_pop 		();
 
 //go to next instruction
 void 			move		();
@@ -69,7 +70,7 @@ void 			move		();
 /* =================== GRID FUNCS ===================*/
 
 void print_grid(){
-	for(int i = 0; i < Y; i++) {		//Iter lines
+	for(int i = 0; i < Y; i++) {			//Iter lines
 		for(int j = 0; j < X; j++)		//Iter chars
 			printf("%c", ins[i][j]);	//print char
 		printf("\n");
@@ -97,7 +98,7 @@ void init_grid(FILE * fd) {
 			//READ UNTIL NEW LINE CHAR
 			if(tmp != '\n')
 			{
-				ins[y][x++] = (char)tmp;		//store
+				ins[y][x++] = (char)tmp;	//store
 				x_max = x > x_max ? x : x_max;	//strech horizontal lim
 			}
 			else
@@ -119,9 +120,9 @@ void init_grid(FILE * fd) {
 
 //BEFUNGE STACK WEIRD POP
 signed long int my_pop(){
-	if(stackSize > 0)		//official site said so
+	if(stackSize > 0)			//official site said so
 		return stack[--stackSize];
-	else 						//case of underflow
+	else 					//case of underflow
 		return 0;
 }
 
@@ -134,10 +135,10 @@ void my_push(signed long int n) {
 }
 
 //general purpose (register like) -- global 
-signed long int n1,n2,n3;			//3 signed long ints
-char c;								//char commands, read, write, get, put, ..
+signed long int n1,n2,n3;		//3 signed long ints
+char c;					//char commands, read, write, get, put, ..
 uint_fast8_t x_pos_, y_pos_;		//my position at the grid
-char com = ' ';						//current instruction
+char com = ' ';				//current instruction
 
 
 
@@ -398,7 +399,7 @@ int main(int argc, char ** argv)
 		SWAP:	//swap 
 			n2 = my_pop();		//my_pop oxi al_pop
 			n1 = my_pop();		//an einai deikths se cons
-									//to krataw opws einai
+						//to krataw opws einai
 			my_push(n2);
 			my_push(n1);
 		CONTINUE;
@@ -553,7 +554,7 @@ int main(int argc, char ** argv)
 			}
 			
 			
-			FETCH;	//GET NEXT COMMAND
+		FETCH;	//GET NEXT COMMAND
 	
 
 	return 0;
