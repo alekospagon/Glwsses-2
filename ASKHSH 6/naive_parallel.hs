@@ -40,21 +40,40 @@ fact_exp n p =
 
 -- O(n)
 get_num :: MYTYPE -> MYTYPE -> MYTYPE -> MYTYPE
-get_num n k p = gn_loop (n-k+1) 1
+get_num n k p = -- gn_loop (n-k+1) 1
+	withStrategy strat  ((upper_half * lower_half) `rem` p)
 	where
-		-- for i in range(n, n-k, -1): returns num
-		gn_loop !i !r = 
-			if (i == n+1) then r
-			else 
-				-- num = (cur*num)%p
-				gn_loop (i+1)  ( ((gn_strip_p i) * r) `rem` p)
+		half = n - (k `div` 2)
+		upper_half = gn_loop_high half 1
+		lower_half = gn_loop_low (n-k+1) 1
+		-- Run in parallel
+		strat v = do rpar upper_half; rseq lower_half; return v
 
-			where 
-				-- while cur%p == 0: returns cur
-				gn_strip_p !cur = 
-					if (cur `rem` p) /= 0 then cur
-					else
-						gn_strip_p (cur `div` p)
+
+		-- for i in range(n, n-k, -1): returns num
+		-- range n-k to n splits into two:
+		-- half point is (n + (n-k))/2 == n - k/2. so:
+		-- upper half gets range: half to n 
+		-- lower half gets range: n-k+1 to half 
+		-- half to n (half included)
+		gn_loop_high i r = 
+			if (i >= n + 1) then r   -- exceeded n
+			else
+				-- go higher
+				gn_loop_high (i+1) ( ((gn_strip_p i) * r) `rem` p)
+
+		-- n-k+1 to half   (half excluded)
+		gn_loop_low i r = 
+			if (i >= half) then r
+			else
+				gn_loop_low (i+1) ( ((gn_strip_p i) * r) `rem` p)
+
+		-- while cur%p == 0: returns cur
+		gn_strip_p !cur = 
+			if (cur `rem` p) /= 0 then cur
+			else
+				gn_strip_p (cur `div` p)
+
 
 -- O(n)
 get_den :: MYTYPE -> MYTYPE -> MYTYPE
