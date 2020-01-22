@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -O2 -fno-warn-tabs #-}
 {-# LANGUAGE BangPatterns, BlockArguments #-}
 
-import Data.Maybe  
 import Data.Word
 import Control.DeepSeq
 import Control.Monad.Par
@@ -41,22 +40,19 @@ fact_exp n p =
 			else fact_exp_loop (e + (n `div` u)) (u * p)
 
 
--- O(n)
-get_num :: MYTYPE -> MYTYPE -> MYTYPE -> MYTYPE
-get_num n k p =
+parr_range !from !to !p = 
 	par_fact
 	where
-		half 	= ((n-k+1) + n)    	`div` 2
-		low_q 	= ((n-k+1) + half) 	`div` 2
-		high_q 	= (half + n) 		`div` 2
-
-
 		-- split into four zones
-		fst = g_loop (n-k+1)	low_q	1
-		snd = g_loop low_q 		half 	1
-		thr = g_loop half 		high_q 	1
-		frt = g_loop high_q 	(n+1)	1
+		half = (from + to)   `div` 2
+		low  = (from + half) `div` 2
+		high = (half + to)   `div` 2
 
+		-- ways to compute four zones
+		fst = g_loop from low 1
+		snd = g_loop low half 1
+		thr = g_loop half high 1
+		frt = g_loop high (to+1) 1
 
 		-- Run four computations in parallel and merge results
 		par_fact = runPar $ do 
@@ -68,9 +64,10 @@ get_num n k p =
 			b <- get res2
 			c <- get res3
 			d <- get res4
-			let 
+			let -- merge two
 				merge1 = ((a*b)`rem`p)
 				merge2 = ((c*d)`rem`p)
+			-- merge four
 			return $ ((merge1 * merge2)`rem`p)
 
 
@@ -88,50 +85,17 @@ get_num n k p =
 				g_strip_p (cur `div` p)
 
 
--- O(n)
+
+-- numenator: (n-k+1)(n-k+2)...(n-1)n 	<- O(n)
+get_num :: MYTYPE -> MYTYPE -> MYTYPE -> MYTYPE
+get_num n k p =
+	parr_range (n-k+1) n p 
+
+
+-- denominator: k! 	<- O(n)
 get_den :: MYTYPE -> MYTYPE -> MYTYPE
 get_den k p =
-	par_fact
-	where 
-		-- split into four zones -- boundaries
-		half 	= (1 + k)    `div` 2
-		low_q 	= (1 + half) `div` 2
-		high_q 	= (half + k) `div` 2
-
-		-- split into four zones
-		fst = g_loop 1 low_q  1
-		snd = g_loop low_q half 1
-		thr = g_loop half high_q 1
-		frt = g_loop high_q (k+1) 1
-
-		-- Run four computations in parallel and merge results
-		par_fact = runPar $ do 
-			res1 <- spawnP fst
-			res2 <- spawnP snd
-			res3 <- spawnP thr
-			res4 <- spawnP frt
-			a <- get res1
-			b <- get res2
-			c <- get res3
-			d <- get res4
-			let 
-				merge1 = ((a*b)`rem`p)
-				merge2 = ((c*d)`rem`p)
-			return $ ((merge1 * merge2)`rem`p)
-
-		-- product from lower to upper
-		g_loop !lower !upper !res =
-			if (lower >= upper) then res
-			else
-				g_loop (lower+1) upper (((g_strip_p lower)*res) `rem` p)
-
-		-- while cur%p == 0: returns cur
-		g_strip_p !cur = 
-			if (cur `rem` p) /= 0 then cur
-			else
-				g_strip_p (cur `div` p)
-
-
+	parr_range 1 k p 
 
 
 
@@ -144,7 +108,7 @@ fermat_binom n k p =
 		0
 	-- compute
 	else
-		my_par 
+		my_par -- numerator and denominator in parallel
 	where
 		-- check degree
 		num_degree = (fact_exp n p) - (fact_exp (n-k) p)
@@ -199,11 +163,11 @@ lucas_binom n k p =
 
 
 
-read_line = do
-	content <- B.getLine
-	return content
 
--- typecast and solve query
+
+-- | SOLVE IN PARALLEL | --
+
+-- solve query
 solve :: [MYTYPE] -> MYTYPE
 solve [n, k, p] = 
 	lucas_binom n k p 
@@ -213,17 +177,20 @@ solve [n, k, p] =
 my_parMap :: (a->b) -> [a] -> Eval [b]
 my_parMap f xs = mapM (rpar . f) xs
 
-
+{-
 deep :: NFData a => a -> a
 deep a = deepseq a a 
-
+-}
 
 -- solve queries in parallel
 parSolve :: [[MYTYPE]] -> [MYTYPE]
 parSolve xs = {- deep $ -} runEval $ my_parMap solve xs
 
 
--- clean and fast print
+
+-- | IO FUNCS | --
+
+-- fast print
 fast_print :: MYTYPE -> IO ()
 fast_print x = 
 	B.putStrLn $ B.pack $ show $ x
@@ -234,6 +201,7 @@ rList :: String -> MYTYPE
 rList = read
 
 
+-- | main read, solve | --
 main = do
 	input <- getContents
 	let (t:raw_queries) = lines input
