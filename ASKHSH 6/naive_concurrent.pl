@@ -14,14 +14,14 @@ read_from_file(File, Lines) :-
 	 read_params(Stream, [N]),
 	 read_lines(Stream, N, Lines).
 
-%read_first_line
+%read many integers from line
 read_params(Stream , Params) :-
 	 read_line_to_codes(Stream, Line),
 	 atom_codes(Atom, Line),
 	 atomic_list_concat(Atoms, ' ', Atom),
 	 concurrent_maplist(atom_number, Atoms, Params).
 
-%read_N_lines_from_Stream
+%read N lines
 read_lines(_, 0, []) :- !.
 read_lines(Stream, Counter, [X|L]) :-   
 	%read
