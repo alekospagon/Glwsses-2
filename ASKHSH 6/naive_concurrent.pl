@@ -37,8 +37,8 @@ fastpow(Base, Exp, Mod, Res) :-
 fastpow_(_, 0, _, Acc, Acc) :- !.	%dont look further
 fastpow_(Base, Exp, Mod, Acc, Res) :-
 	New_b is (Base * Base) mod Mod,
-	New_e is Exp div 2,
-	Parity is mod(Exp, 2),
+	New_e is Exp >> 1,
+	Parity is Exp /\ 1,
 	(
 		Parity =:= 0 -> 
 			New_a is Acc 
@@ -68,7 +68,7 @@ fact_exp_loop(E, U, N, P, Res) :-
 fermat_binom(N, K, P, Res) :-
 	get_num(N, K, P, Num),
 	get_den(K, P, Den),
-	P_2 is P-2,
+	P_2 is P - 2,
 	fastpow(Den, P_2, P, Fast_pow),
 	Res is (Num * Fast_pow) mod P.
 
@@ -76,7 +76,7 @@ fermat_binom(N, K, P, Res) :-
 
 %product of num and den
 get_num(N, K, P, Res) :-
-	From is N-K+1,
+	From is N - K + 1,
 	par_range(From, N, P, Res).
 
 get_den(K, P, Res) :-
@@ -85,9 +85,9 @@ get_den(K, P, Res) :-
 
 par_range(From, To, P, Res) :-
 	% split product range into 4
-	Half is (From + To) div 2,
-	Low  is (From + Half) div 2,
-	High is (Half + To) div 2,
+	Half is (From + To) >> 1,
+	Low  is (From + Half) >> 1,
+	High is (Half + To) >> 1,
 	Upper is To + 1,
 
 	% Limits of ranges in list for concurrent_maplist to apply onto
