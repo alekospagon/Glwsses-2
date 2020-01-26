@@ -1,3 +1,10 @@
+% COMPILE WITH:  swipl -O -q -o here -c a.pl
+
+% then run final('testcase.txt', Res).
+
+
+
+
 :- use_module(library(thread)).	%concurrent 
 
 
