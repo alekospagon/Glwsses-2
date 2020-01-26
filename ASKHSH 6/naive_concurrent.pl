@@ -55,22 +55,6 @@ fastpow_(Base, Exp, Mod, Acc, Res) :-
 	fastpow_(New_b, New_e, Mod, New_a, Res).
 
 
-
-% degree of p in n!  (exponent of p in the factorization of n!)
-fact_exp(N, P, Res) :-
-	fact_exp_loop(0, P, N, P,Res).
-fact_exp_loop(E, U, N, P, Res) :-
-	(U > N) -> 
-		(Res = E)
-	;	
-		(
-			New_e is E + (N div U),
-			New_u is U * P,
-			fact_exp_loop(New_e, New_u, N, P, Res)
-		)
-	.
-
-
 % nCk % p
 fermat_binom(N, K, P, Res) :-
 	get_num(N, K, P, Num),
