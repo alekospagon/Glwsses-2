@@ -1,8 +1,8 @@
-:- use_module(library(thread)).
+:- use_module(library(thread)).	%concurrent 
 
 
 %read_from_file
-read_from_file(File, N, Lines) :-
+read_from_file(File, Lines) :-
 	 open(File, read, Stream),
 	 read_params(Stream, [N]),
 	 read_lines(Stream, N, Lines).
@@ -12,10 +12,10 @@ read_params(Stream , Params) :-
 	 read_line_to_codes(Stream, Line),
 	 atom_codes(Atom, Line),
 	 atomic_list_concat(Atoms, ' ', Atom),
-	 maplist(atom_number, Atoms, Params).
+	 concurrent_maplist(atom_number, Atoms, Params).
 
 %read_N_lines_from_Stream
-read_lines(_, 0, []).
+read_lines(_, 0, []) :- !.
 read_lines(Stream, Counter, [X|L]) :-   
 	%read
 	read_params(Stream, X),
@@ -64,73 +64,64 @@ fact_exp_loop(E, U, N, P, Res) :-
 	.
 
 
-
-
-% fermat_binom. Res = nCk % p
+% nCk % p
 fermat_binom(N, K, P, Res) :-
-	% num_degree and den_degree
-	fact_exp(N, P, Num1), 
-	N_K is N-K, fact_exp(N_K, P, Num2),
-	Num_degree is Num1 - Num2,
-	fact_exp(K,P,Den_degree),
-
-	% quick check
-	( (Num_degree > Den_degree) ; (K>N)	) ->
-		(Res = 0)
-		;
-		(
-			get_num(N, K, P, Num),
-			get_den(K, P, Den),
-			P_2 is P-2,
-			fastpow(Den, P_2, P, Fast_pow),
-			Res is (Num * Fast_pow) mod P
-		)
-	.
-
+	get_num(N, K, P, Num),
+	get_den(K, P, Den),
+	P_2 is P-2,
+	fastpow(Den, P_2, P, Fast_pow),
+	Res is (Num * Fast_pow) mod P.
 
 
 
 %product of num and den
 get_num(N, K, P, Res) :-
 	From is N-K+1,
-	To is N + 1,
-	range_loop(From, To, 1, P, Res).
-
+	par_range(From, N, P, Res).
 
 get_den(K, P, Res) :-
-	To is K + 1,
-	range_loop(1, To, 1, P, Res).
+	par_range(1, K, P, Res).
 
 
+par_range(From, To, P, Res) :-
+	% split product range into 4
+	Half is (From + To) div 2,
+	Low  is (From + Half) div 2,
+	High is (Half + To) div 2,
+	Upper is To + 1,
 
+	% Limits of ranges in list for concurrent_maplist to apply onto
+	Limits = [[From, Low], [Low, Half], [Half, High], [High, Upper]],
+
+	% compure concurrently 
+	concurrent_maplist(comp_range_loop, Limits, [P,P,P,P], [Res1, Res2, Res3, Res4]),
+
+	% merge two lower and two upper areas
+	Merge1 is (Res1 * Res2) mod P,
+	Merge2 is (Res3 * Res4) mod P,
+	%merge together
+	Res is (Merge1 * Merge2) mod P.
+
+
+% like range_loop but I compress (From, To) to list [From, To]
+% to use concurrent_maplist/4. cause there is not concurrent_maplist/5.
+comp_range_loop([From, To], P, Res) :-
+	range_loop(From, To, 1, P, Res).
 
 % product loop
+range_loop(To, To, Acc, _, Acc) :- !.
 range_loop(From, To, Acc, P, Res) :-
-	(From = To) ->
-		(Res = Acc)
-	;
-		(
-			New_from is From + 1,
-			New_acc  is (From * Acc) mod P,
-			range_loop(New_from, To, New_acc, P, Res)
-		)
-	.
+	New_from is From + 1,
+	New_acc  is (From * Acc) mod P,
+	range_loop(New_from, To, New_acc, P, Res).
 
 
 %solve one 
 solve([N,K,P], Res) :-
 	fermat_binom(N, K, P, Res).
 
-
-query(Params, Res) :-
-	solve(Params, Res).
-
-
-
+% Open file and solve all
 final(File, Res) :-
-	read_from_file(File, _, Lines),
-	%maplist(query, Lines, Res).
-	concurrent_maplist(query, Lines, Res).
-
-
-
+	read_from_file(File, Lines),
+	% solve problems concurrently
+	concurrent_maplist(solve, Lines, Res).
