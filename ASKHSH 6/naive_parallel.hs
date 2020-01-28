@@ -1,7 +1,9 @@
 {-# OPTIONS_GHC -O2 -fno-warn-tabs #-}
 {-# LANGUAGE BangPatterns #-}
 
+import Data.Maybe  
 import Data.Word
+import qualified Data.ByteString.Char8 as B
 import Control.Monad.Par
 import Control.Parallel.Strategies
 
@@ -165,21 +167,32 @@ lucas_binom n k p =
 			lb_loop ns ks  ((binom * (fermat_binom ni ki p)) `rem` p)
 
 			
+final :: Int -> IO ()
+final t = read_and_exec t 
+	where 
+		read_and_exec t = 
+			if t == 0 then return ()
+			else do
+				content <- B.getLine
+
+				let 
+					[maybe_n, maybe_k, maybe_p] = map (B.readInt) (B.words content)
+					n = fst $ fromMaybe (42, B.empty) maybe_n
+					k = fst $ fromMaybe (42, B.empty) maybe_k
+					p = fst $ fromMaybe (42, B.empty) maybe_p
+				
+					itow = fromIntegral -- Int to Word64
+
+					res = lucas_binom (itow n) (itow k) (itow p)
+
+				
+			    	B.putStrLn $ B.pack $ show $ res
+
+				read_and_exec (t-1)
+
+
 
 main = do
-	--let a = lucas_binom 950 100 7
-
-	-- 1 sec
-	--let a = lucas_binom 54262776 30644515 67250069
-
-	-- 1.8 sec
-	--let a = lucas_binom 339446636 51256371 833504351
-
-	-- 18 secs
-	let a = lucas_binom 580086636 520507822 833504351
-
-	-- 0.066 sec
-	-- let a = fermat_binom 580086636 520507822 4253309
-
-
-	print a
+	raw_t <- getLine
+	let t = (read raw_t) :: Int
+	final t
