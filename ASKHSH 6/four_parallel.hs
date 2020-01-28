@@ -39,7 +39,8 @@ fact_exp n p =
 			if u > n then e 
 			else fact_exp_loop (e + (n `div` u)) (u * p)
 
-
+-- compute product i where i is: {from `from` to `to`} modulo p
+-- striping on every i any occurence of p
 parr_range !from !to !p = 
 	par_fact
 	where
@@ -75,7 +76,9 @@ parr_range !from !to !p =
 		g_loop !lower !upper !res =
 			if (lower >= upper) then res
 			else
-				g_loop (lower+1) upper (((g_strip_p lower)*res) `rem` p)
+				-- striping p is no good. p > n,k
+				-- g_loop (lower+1) upper (((g_strip_p lower)*res) `rem` p)
+				g_loop (lower+1) upper ((lower*res) `rem` p)
 
 
 		-- while cur%p == 0: returns cur
@@ -170,7 +173,7 @@ lucas_binom n k p =
 -- solve query
 solve :: [MYTYPE] -> MYTYPE
 solve [n, k, p] = 
-	lucas_binom n k p 
+	lucas_binom n k p 	--same as fermat_binom when p > n,k
 	
 
 -- apply f in parallel for all queries
