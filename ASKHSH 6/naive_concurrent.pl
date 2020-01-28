@@ -1,11 +1,5 @@
-% COMPILE WITH:  swipl -O -q -o here -c a.pl
-
-% then run final('testcase.txt', Res).
-
-
-
-
-:- use_module(library(thread)).	%concurrent 
+%concurrent 
+:- use_module(library(thread)).
 
 
 %read_from_file
@@ -14,14 +8,14 @@ read_from_file(File, Lines) :-
 	 read_params(Stream, [N]),
 	 read_lines(Stream, N, Lines).
 
-%read many integers from line
+%read_first_line
 read_params(Stream , Params) :-
 	 read_line_to_codes(Stream, Line),
 	 atom_codes(Atom, Line),
 	 atomic_list_concat(Atoms, ' ', Atom),
 	 concurrent_maplist(atom_number, Atoms, Params).
 
-%read N lines
+%read_N_lines_from_Stream
 read_lines(_, 0, []) :- !.
 read_lines(Stream, Counter, [X|L]) :-   
 	%read
@@ -33,35 +27,40 @@ read_lines(Stream, Counter, [X|L]) :-
 % END OF IO %
 
 
-
-
 % Res = Base ^ Exp % Mod
 fastpow(Base, Exp, Mod, Res) :-
-	Base_m is Base mod Mod,
-	fastpow_(Base_m, Exp, Mod, 1, Res).
+	fastpow_(Base, Exp, Mod, 1, Res).
 
 % helping pred
 fastpow_(_, 0, _, Acc, Acc) :- !.	%dont look further
 fastpow_(Base, Exp, Mod, Acc, Res) :-
-	New_b is (Base * Base) mod Mod,
+	New_b is (Base * Base) rem Mod,
 	New_e is Exp >> 1,
-	Parity is Exp /\ 1,
 	(
-		Parity =:= 0 -> 
+		% Parity
+		0 is Exp /\ 1 -> 
 			New_a is Acc 
 		;
-			New_a is (Acc * Base) mod Mod
+			New_a is (Acc * Base) rem Mod
 	),
 	fastpow_(New_b, New_e, Mod, New_a, Res).
 
 
+
 % nCk % p
 fermat_binom(N, K, P, Res) :-
-	get_num(N, K, P, Num),
-	get_den(K, P, Den),
+
+	Fermat_Goals = [
+			get_num(N, K, P, Num),
+			get_den(K, P, Den)
+		],
+
+	% spawn threads
+	concurrent(2, Fermat_Goals, []),
+
 	P_2 is P - 2,
 	fastpow(Den, P_2, P, Fast_pow),
-	Res is (Num * Fast_pow) mod P.
+	Res is (Num * Fast_pow) rem P.
 
 
 
@@ -81,29 +80,28 @@ par_range(From, To, P, Res) :-
 	High is (Half + To) >> 1,
 	Upper is To + 1,
 
-	% Limits of ranges in list for concurrent_maplist to apply onto
-	Limits = [[From, Low], [Low, Half], [Half, High], [High, Upper]],
+	Par_goals = [
+			range_loop(From, Low  , 1, P, Res1),
+			range_loop(Low , Half , 1, P, Res2),
+			range_loop(Half, High , 1, P, Res3),
+			range_loop(High, Upper, 1, P, Res4)
+		],
 
-	% compure concurrently 
-	concurrent_maplist(comp_range_loop, Limits, [P,P,P,P], [Res1, Res2, Res3, Res4]),
+	concurrent(4, Par_goals, [] ),
+
 
 	% merge two lower and two upper areas
-	Merge1 is (Res1 * Res2) mod P,
-	Merge2 is (Res3 * Res4) mod P,
+	Merge1 is (Res1 * Res2) rem P,
+	Merge2 is (Res3 * Res4) rem P,
 	%merge together
-	Res is (Merge1 * Merge2) mod P.
+	Res is (Merge1 * Merge2) rem P.
 
-
-% like range_loop but I compress (From, To) to list [From, To]
-% to use concurrent_maplist/4. cause there is not concurrent_maplist/5.
-comp_range_loop([From, To], P, Res) :-
-	range_loop(From, To, 1, P, Res).
 
 % product loop
 range_loop(To, To, Acc, _, Acc) :- !.
 range_loop(From, To, Acc, P, Res) :-
 	New_from is From + 1,
-	New_acc  is (From * Acc) mod P,
+	New_acc  is (From * Acc) rem P,
 	range_loop(New_from, To, New_acc, P, Res).
 
 
