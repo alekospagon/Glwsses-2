@@ -3,6 +3,7 @@
 import Test.QuickCheck 
 import Control.Monad
 import Text.Show.Functions
+import Data.List
 
 -- | A polymorphic n-ary tree data structure.
 -- | Note: a tree cannot be empty
@@ -25,7 +26,7 @@ instance Arbitrary a => Arbitrary (Tree a) where
 
 			-- | n nodes to add
 			testTree nodes = do
-				-- | take a `random` number
+				-- | take a `random` positive number
 				(Positive children) <- arbitrary
 				-- | how many nodes per subtree?
 				let perChild = nodes `div` (children + 1)
@@ -37,30 +38,82 @@ instance Arbitrary a => Arbitrary (Tree a) where
 				return $ Node nodeinfo subTrees
 
 	-- | Task 2
-	{-
+	
 	shrink = shrinkTree
 		where	
 			-- | shrink tree
 			shrinkTree :: Arbitrary a => Tree a -> [Tree a]	
-			shrinkTree (Node a []) = [ Node a [] ]
-			shrinkTree (Node a [chl]) = 
-				-- | 1. shrink to the extreme: keep only root
-				[(Node a [])] ++
-				-- | 2. keep any subtree as it is
-				[chl] ++ 
-				-- | 3. Shrink root info
-				[Node a' [chl] | a' <- shrink a] ++
-				-- | 4. Shrink every child recursively
-				[Node a [chl'] | ]
+			shrinkTree (Node a []) = []
+			shrinkTree (Node a chl) = 
+				aux (Node a chl) ++ concatMap shrinkTree chl
+
+	
+			
+			  
+			-- the same node with more and more children
+			aux (Node a []) = [Node a []]
+			aux (Node a chl) = 
+				res_children 
+				where
+					res_children = 
+						map (\ch -> Node a ch) more_children
+					-- don't reinsert the start node
+					more_children = 
+						init $ inits chl
 
 
-			-- | Iterate every subtree and either shrink it or not
-			shrinkEveryChild [] = []
-			shrinkEveryChild (chl:chls) = 
-				-- | shrink here
-				(shrink chl : chls)
-	-}
-				
+
+
+{-
+ ______   ______     ______     ______   __     __   __     ______    
+/\__  _\ /\  ___\   /\  ___\   /\__  _\ /\ \   /\ "-.\ \   /\  ___\   
+\/_/\ \/ \ \  __\   \ \___  \  \/_/\ \/ \ \ \  \ \ \-.  \  \ \ \__ \  
+   \ \_\  \ \_____\  \/\_____\    \ \_\  \ \_\  \ \_\\"\_\  \ \_____\ 
+    \/_/   \/_____/   \/_____/     \/_/   \/_/   \/_/ \/_/   \/_____/ 
+                                                                      
+-}
+
+
+-- | Task 3
+
+-- | dfs - bfs: index or root must be one
+prop_root_one :: (Tree a -> Tree (a, Integer)) -> Tree a -> Bool
+prop_root_one f tree = 
+	root_num (f tree) == 1
+	where
+		root_num :: Tree (a, Integer) -> Integer
+		root_num (Node (_, b)  _) = b
+		
+
+-- | applying func to tree conserves size (#nodes)
+prop_conserve_size :: (Tree a -> Tree b) -> Tree a -> Bool
+prop_conserve_size func tree = 
+	tree_size tree == tree_size (func tree)
+
+
+-- | applying func to tree conserves height
+prop_conserve_height :: (Tree a -> Tree b) -> Tree a -> Bool
+prop_conserve_height func tree = 
+	tree_height tree == tree_height (func tree)
+
+
+
+
+-- | merge must give a (possibly) larger tree
+prop_merge_size :: (a-> a -> a) -> (Tree a) -> (Tree a) -> Bool
+prop_merge_size f t1 t2 = 
+	tree_size (merge f t1 t2) >= max (tree_size t1) (tree_size t2)
+
+-- | wrong must EXPLODE here. 
+prop_wrong_size :: (a-> a -> a) -> (Tree a) -> (Tree a) -> Bool
+prop_wrong_size f t1 t2 = 
+	tree_size (wrong f t1 t2) >= max (tree_size t1) (tree_size t2)
+
+
+
+
+
+
 	
 {-
  __    __     ______     ______     ______     ______    
@@ -105,53 +158,6 @@ tree_size :: Tree a -> Int
 tree_size (Node a []) = 1
 tree_size (Node a ls) = 
 	1 + sum (map (tree_size) ls)
-
-
-{-
- ______   ______     ______     ______   __     __   __     ______    
-/\__  _\ /\  ___\   /\  ___\   /\__  _\ /\ \   /\ "-.\ \   /\  ___\   
-\/_/\ \/ \ \  __\   \ \___  \  \/_/\ \/ \ \ \  \ \ \-.  \  \ \ \__ \  
-   \ \_\  \ \_____\  \/\_____\    \ \_\  \ \_\  \ \_\\"\_\  \ \_____\ 
-    \/_/   \/_____/   \/_____/     \/_/   \/_/   \/_/ \/_/   \/_____/ 
-                                                                      
--}
-
-
--- | Task 3
-
--- | dfs - bfs: index or root must be one
-prop_root_one :: (Tree a -> Tree (a, Integer)) -> Tree a -> Bool
-prop_root_one f tree = 
-	root_num (f tree) == 1
-	where
-		root_num :: Tree (a, Integer) -> Integer
-		root_num (Node (_, b)  _) = b
-		
-
--- | applying func to tree conserves size (#nodes)
-prop_conserve_size :: (Tree a -> Tree b) -> Tree a -> Bool
-prop_conserve_size func tree = 
-	tree_size tree == tree_size (func tree)
-
-
--- | applying func to tree conserves height
-prop_conserve_height :: (Tree a -> Tree b) -> Tree a -> Bool
-prop_conserve_height func tree = 
-	tree_height tree == tree_height (func tree)
-
-
-
--- | merge must give a (possibly) larger tree
-prop_merge_size :: (a-> a -> a) -> (Tree a) -> (Tree a) -> Bool
-prop_merge_size f t1 t2 = 
-	tree_size (merge f t1 t2) >= max (tree_size t1) (tree_size t2)
-
--- | wrong must EXPLODE here. 
-prop_wrong_size :: (a-> a -> a) -> (Tree a) -> (Tree a) -> Bool
-prop_wrong_size f t1 t2 = 
-	tree_size (wrong f t1 t2) >= max (tree_size t1) (tree_size t2)
-
-
 
 
 {-
@@ -259,7 +265,7 @@ main = do
 
 	-- | Task 6
 
-	-- a. Prove wrong is `wrong`
+	-- a. Prove `wrong` is wrong
 	putStrLn "\nChecking size property for wrong merge"
 	quickCheck (prop_wrong_size (+) :: (Tree Int) -> (Tree Int) -> Bool)
 
