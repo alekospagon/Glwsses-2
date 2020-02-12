@@ -1,0 +1,5 @@
+1) python3 samples.py to generate testcases
+
+2) make to compile haskell programs
+
+3) then ./compare.sh to run samples.txt for 3 programs
