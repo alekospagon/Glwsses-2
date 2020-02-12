@@ -64,48 +64,28 @@ fermat_binom n k p =
 			0
 		-- compute
 		else
-			let 
-				num = get_num n k p 	-- O(n)
-				den = get_den k p 		-- O(n)
-			in 
-				(num * (fastpow den (p-2) p))  `rem` p
-
-
-
+			if k > (n-k+1) then
+				epikalupsh_bin
+			else
+				bin
 	where
-		-- O(n)
-		get_num n k p = gn_loop (n-k+1) 1
-			where
-				-- for i in range(n, n-k, -1): returns num
-				gn_loop !i !r = 
-					if (i == n+1) then r
-					else 
-						-- num = (cur*num)%p
-						gn_loop (i+1)  ( ((gn_strip_p i) * r) `rem` p)
+		-- Binom			
+		num = range (n-k+1) n p 1 	-- O(n)
+		den = range 1 k p 1 		-- O(n)
+		bin = (num * (fastpow den (p-2) p))  `rem` p
 
-					where 
-						-- while cur%p == 0: returns cur
-						gn_strip_p cur = 
-							if (cur `rem` p) /= 0 then cur
-							else
-								gn_strip_p (cur `div` p)
+		-- Epik Binom
+		epik_num = range (k+1) n p 1
+		epik_den = range 1 (n-k) p 1
+		epikalupsh_bin = 
+			(epik_num * (fastpow epik_den (p-2) p))  `rem` p
 
-		-- O(n)
-		get_den k p = gd_loop 1 1
-			where 
-				-- for i in range(1, k+1): returns denom
-				gd_loop !i !r = 
-					if i == k+1 then r 
-					else
-						-- denom = (cur*denom)%p
-						gd_loop (i+1) ( ((gd_strip_p i) * r) `rem` p)
+		-- Loop
+		range !from to p !r = 
+			if from == to+1 then r 
+			else 
+				range (from+1) to p ((r*from) `rem` p)
 
-					where
-						-- while cur%p == 0: returns cur
-						gd_strip_p cur = 
-							if (cur `rem` p) /= 0 then cur
-							else
-								gd_strip_p (cur `div` p)
 
 
 
