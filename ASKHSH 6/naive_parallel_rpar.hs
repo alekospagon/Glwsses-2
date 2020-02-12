@@ -3,6 +3,7 @@
 
 import Data.Maybe  
 import Data.Word
+import Control.DeepSeq
 import qualified Data.ByteString.Char8 as B
 import Control.Monad.Par
 import Control.Parallel.Strategies
@@ -40,75 +41,6 @@ fact_exp n p =
 			else fact_exp_loop (e + (n `div` u)) (u * p)
 
 
--- O(n)
-get_num :: MYTYPE -> MYTYPE -> MYTYPE -> MYTYPE
-get_num n k p = -- gn_loop (n-k+1) 1
-	withStrategy strat  ((upper_half * lower_half) `rem` p)
-	where
-		half = n - (k `div` 2)
-		upper_half = gn_loop_high half 1
-		lower_half = gn_loop_low (n-k+1) 1
-		-- Run in parallel
-		strat v = do rpar upper_half; rseq lower_half; return v
-
-
-		-- for i in range(n, n-k, -1): returns num
-		-- range n-k to n splits into two:
-		-- half point is (n + (n-k))/2 == n - k/2. so:
-		-- upper half gets range: half to n 
-		-- lower half gets range: n-k+1 to half 
-		-- half to n (half included)
-		gn_loop_high !i !r = 
-			if (i >= n + 1) then r   -- exceeded n
-			else
-				-- go higher
-				gn_loop_high (i+1) ( ((gn_strip_p i) * r) `rem` p)
-
-		-- n-k+1 to half   (half excluded)
-		gn_loop_low !i !r = 
-			if (i >= half) then r
-			else
-				gn_loop_low (i+1) ( ((gn_strip_p i) * r) `rem` p)
-
-		-- while cur%p == 0: returns cur
-		gn_strip_p !cur = 
-			if (cur `rem` p) /= 0 then cur
-			else
-				gn_strip_p (cur `div` p)
-
-
--- O(n)
-get_den :: MYTYPE -> MYTYPE -> MYTYPE
-get_den k p =
-	withStrategy strat  ((upper_half * lower_half) `rem` p)
-	where 
-		half = (1+k) `div` 2
-		upper_half = gd_loop_high half 1
-		lower_half = gd_loop_low 1 1
-		-- Run in parallel
-		strat v = do rpar upper_half; rseq lower_half; return v		
-
-		gd_loop_high i r =  
-			if (i >= k + 1) then r  -- exceeded k
-			else
-				gd_loop_high (i+1) ( ((gd_strip_p i) * r) `rem` p)
-
-		gd_loop_low i r = 
-			if (i >= half) then r
-			else
-				gd_loop_low (i+1) ( ((gd_strip_p i) * r) `rem` p)
-
-
-		-- while cur%p == 0: returns cur
-		gd_strip_p !cur = 
-			if (cur `rem` p) /= 0 then cur
-			else
-				gd_strip_p (cur `div` p)
-
-
-
-
-
 
 -- Using Fermat's little theorem to compute nCk mod p
 -- considering cancelation of p in numerator and denominator
@@ -119,16 +51,48 @@ fermat_binom n k p =
 		0
 	-- compute
 	else
-		withStrategy strat  ((num*(fastpow den (p-2) p)) `rem` p)
+		if k > n-k+1 then 
+			epik
+		else
+			aplo
 	where
+		deep :: NFData a => a -> a
+		deep a = deepseq a a 
+
 		-- check degree
 		num_degree = (fact_exp n p) - (fact_exp (n-k) p)
 		den_degree = fact_exp k p 
+
+
 		-- numerator and denominator 
-		num = get_num n k p
-		den = get_den k p
-		-- Run in parallel
-		strat v = do rpar num; rseq den; return v
+		num = range (n-k+1) n p 1
+		den = range 1 k p 1
+		aplo = runEval $ do
+			a <- rpar (deep num)
+			b <- rpar (deep den)
+			rseq a 
+			rseq b
+			return $ ((a*(fastpow b (p-2) p)) `rem` p)
+
+
+
+		--epikalupsh
+		epik_num = range (k+1) n p 1
+		epik_den = range 1 (n-k) p 1
+		epik = runEval $ do
+			a <- rpar (deep epik_num) 
+			b <- rpar (deep epik_den)
+			rseq a 
+			rseq b
+			return $ (a * (fastpow b (p-2) p))  `rem` p
+			
+
+
+		-- Loop
+		range !from to p !r = 
+			if from == to+1 then r 
+			else 
+				range (from+1) to p ((r*from) `rem` p)
 
 
 
