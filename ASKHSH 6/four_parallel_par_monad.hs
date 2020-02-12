@@ -76,9 +76,10 @@ parr_range !from !to !p =
 		g_loop !lower !upper !res =
 			if (lower >= upper) then res
 			else
-				-- striping p is no good. p > n,k
-				-- g_loop (lower+1) upper (((g_strip_p lower)*res) `rem` p)
 				g_loop (lower+1) upper ((lower*res) `rem` p)
+				-- striping p is no good. p > n,k
+				--g_loop (lower+1) upper (((g_strip_p lower)*res) `rem` p)
+				
 
 
 		-- while cur%p == 0: returns cur
@@ -111,18 +112,38 @@ fermat_binom n k p =
 		0
 	-- compute
 	else
-		my_par -- numerator and denominator in parallel
+		-- epikalupsh ari8mhth-paranomasth?
+		if k > (n-k+1) then
+			epikalupsh_par
+		else
+			my_par 
 	where
 		-- check degree
 		num_degree = (fact_exp n p) - (fact_exp (n-k) p)
 		den_degree = fact_exp k p 
 		-- numerator and denominator 
-		num = get_num n k p
-		den = get_den k p
+		whole_num = get_num n k p
+		whole_den = get_den k p
+
+		-- epikalupsh. 
+		-- misos ari8mhths: apo k mexri n
+		-- misos paranomasths: apo 1 mexri (n-k+1)
+		-- epikalupsh: (k+1)..(n-k)
+		misos_den  = parr_range 1 (n-k) p
+		misos_num  = parr_range (k+1) n p
+
+		epikalupsh_par = runPar $ do 
+			res1 <- spawnP misos_num
+			res2 <- spawnP misos_den
+			num <- get res1
+			den <- get res2
+
+			return $ (num * (fastpow den (p-2) p)) `rem` p
+
 
 		my_par = runPar $ do 
-			res1 <- spawnP num 
-			res2 <- spawnP den 
+			res1 <- spawnP whole_num 
+			res2 <- spawnP whole_den 
 			a <- get res1 
 			b <- get res2
 			return $ (a*(fastpow b (p-2) p)) `rem` p
