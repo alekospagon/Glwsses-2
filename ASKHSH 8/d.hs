@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -O2 -optc-O2 #-}
+{-# OPTIONS_GHC -O2 -optc-O2 -fno-warn-tabs #-}
 
 -- Syntax
 
@@ -33,7 +33,7 @@ sem Pneg (VI n  : s)         = ( VI (-n) : s )
 sem Pmul (VI n2 : VI n1 : s) = ( VI (n1 * n2) : s )
 sem Pdiv (VI n2 : VI n1 : s) = ( VI (n1 `div` n2) : VI (n1 `rem` n2) : s )
 
-sem Plt (VI n2 : VI n1 : s) = ( VB (n1 < n2)  : s )
+sem Plt (VI n2 : VI n1 : s) = ( VB (n1 <  n2) : s )
 sem Peq (VI n2 : VI n1 : s) = ( VB (n1 == n2) : s )
 
 sem Pand (VB b2 : VB b1 : s) = ( VB (b2 && b1) : s )
@@ -59,7 +59,7 @@ sem (Pseq p1 p2) s = sem p2 (sem p1 s)
 sem (Pcond p1 p2) (VB True  : s) = sem p1 s
 sem (Pcond p1 p2) (VB False : s) = sem p2 s
 
-sem (Ploop p) (VB True  : s) = sem (Pseq p (Ploop p)) s
+sem (Ploop p) (VB True  : s) = sem (Ploop p) (sem p s)
 sem (Ploop p) (VB False : s) = s
 
 
