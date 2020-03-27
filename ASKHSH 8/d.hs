@@ -29,15 +29,15 @@ sem Pfalse s   = ( VB False : s )
 -- == Alpharithmetic == --
 
 sem Padd (VI n2 : VI n1 : s) = ( VI (n1 + n2) : s )
-sem Pneg (VI n  : s)         = ( VI (-n) : s )
+sem Pneg (VI n  : s)         = ( VI (0 - n) : s )
 sem Pmul (VI n2 : VI n1 : s) = ( VI (n1 * n2) : s )
 sem Pdiv (VI n2 : VI n1 : s) = ( VI (n1 `div` n2) : VI (n1 `rem` n2) : s )
 
-sem Plt (VI n2 : VI n1 : s) = ( VB (n1 <  n2) : s )
-sem Peq (VI n2 : VI n1 : s) = ( VB (n1 == n2) : s )
+sem Plt  (VI n2 : VI n1 : s) = ( VB (n1 <  n2) : s )
+sem Peq  (VI n2 : VI n1 : s) = ( VB (n1 == n2) : s )
 
 sem Pand (VB b2 : VB b1 : s) = ( VB (b2 && b1) : s )
-sem Pnot (VB b : s) = ( VB (not b) : s )
+sem Pnot (VB b : s)          = ( VB (not b) : s )
 
 
 -- == Procedural == --
@@ -55,12 +55,17 @@ sem Pswap2 (a3 : a2 : a1 : s) = ( a2 : a1 : a3 : s )
 -- Execute p1. The new stack is 'sem p1 s' 
 sem (Pseq p1 p2) s = sem p2 (sem p1 s)
 
+
 -- Condition. Choose p1/p2
 sem (Pcond p1 p2) (VB True  : s) = sem p1 s
 sem (Pcond p1 p2) (VB False : s) = sem p2 s
 
+
+-- execute once. update stack. loop again
 sem (Ploop p) (VB True  : s) = sem (Ploop p) (sem p s)
+-- no change
 sem (Ploop p) (VB False : s) = s
+
 
 
 
@@ -70,6 +75,8 @@ sem (Ploop p) (VB False : s) = s
 main = do
 	input <- getContents
 	mapM_ print $ sem (read input) []
+
+
 
 
 
